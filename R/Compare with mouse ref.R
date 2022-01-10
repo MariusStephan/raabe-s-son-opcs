@@ -2,7 +2,7 @@
 # Version:      02
 # Authour:      Marius Stephan
 # Created:      26.01.2021
-# Last edited:  23.02.2021
+# Last edited:  24.11.2021
 
 # Clear Workspace
 rm(list=ls())
@@ -15,6 +15,7 @@ library(limma)
 library(RColorBrewer)
 library(pheatmap)
 library(cowplot)
+library(ggrepel)
 
 
 ### Site of the reference dataset used
@@ -53,7 +54,7 @@ r3 %>% group_by(HomoloGene.ID) %>% summarise(human = Symbol[Common.Organism.Name
 rm("r","r2","r3")
 
 ### Import ref data
-l <- importAllXLS("C:/Users/Marius/MNB QSync/Exchange/Marius/RStudio Projects/2021/2021-01-25 Florian NPC integrate with mouse ref/RefData/")
+l <- importAllXLS("PATH_TO_DOWNLOADED_REF_DATA/RefData/")
 
 ### Join samples in one data.frame
 d <- l[[1]]
@@ -123,7 +124,7 @@ dat2 <- removeBatchEffect(dat,colData$experiment) # Sample groups are linearly a
 assay(vst) <- dat2
 
 ### Check for major batch effects between experiments
-plotPCA(vst)+theme_cowplot()
+plotPCA(vst)
 
 ### Compute gene expression variance across samples
 rv <- rowVars(assay(vst))
@@ -142,7 +143,18 @@ vst2000 <- vst[select,]
 
 ### Plot PCA dimension plot with selected features only (see Figure 5).
 update_geom_defaults("point",list(size=5))
-plotPCA(vst2000)+theme()+theme_cowplot()+scale_color_manual(values= c(rgb(0,0,0),rgb(0.9,0.9,0.9),rgb(0.4,0.4,0.4),"#00BF7D","#A3A500",rgb(0.6,0.6,0.6),"#00B0F6","#E76BF3","#F8766D","#00BF7D","#00B0F6","#E76BF3","#F8766D","#00BF7D"))
+
+pcaData <- plotPCA(vst2000, intgroup=c("condition", "type"), returnData = T)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+pcaData$name <- str_remove(str_remove(str_remove(pcaData$name,".Day."),"15"),"0")
+ggplot(pcaData, aes(PC1, PC2, colour = condition)) +
+  geom_point(size=3, show.legend = F) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed()+
+  geom_text_repel(aes(label = name),show.legend = F)+
+  theme_cowplot()+
+  scale_color_manual(values= c(rgb(0,0,0),rgb(0.7,0.7,0.7),rgb(0.3,0.3,0.3),hsv(0.16,0.6,0.6),hsv(0.25,0.4,0.8),rgb(0.5,0.5,0.5),hsv(0.6,0.6,0.7),hsv(0.6,1,0.6),hsv(0.6,0.4,0.8),hsv(0.16,0.6,0.6),hsv(0.6,0.6,0.7),hsv(0.6,1,0.6),hsv(0.6,0.4,0.8),hsv(0.16,0.6,0.6)))
 
 ### Compute manhattan distances
 distances_samples <- dist(t(assay(vst2000)), method = "manhattan")
